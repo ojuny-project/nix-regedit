@@ -2,6 +2,8 @@ name: release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -18,7 +20,32 @@ permissions:
   contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Resolve release tag
+        id: tag
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          tag=""
+          if [ "$REF_TYPE" = "tag" ]; then
+            tag="$REF_NAME"
+          elif [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag=$(printf '%s\n' "$COMMIT_MESSAGE" | head -n1 | grep -oE '^v[0-9][0-9A-Za-z._-]*' || true)
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: prepare
+    if: needs.prepare.outputs.tag != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -34,7 +61,7 @@ jobs:
       - name: Build bundled binary
         run: |
           mkdir -p dist
-          nix bundle .#packages.x86_64-linux.default -o dist/nix-regedit
+          nix bundle .#packages.x86_64-linux.nix-regedit -o dist/nix-regedit
           cp -L dist/nix-regedit dist/nix-regedit.bin
           rm dist/nix-regedit
 
@@ -44,15 +71,16 @@ jobs:
           sha256sum nix-regedit.bin > SHA256SUMS
 
       # The release also publishes a small flake. Add it as an input and use
-      # packages.<system>.nix-regedit. The fetchurl hash pins the downloaded
-      # bundle, so the package is reproducible without a cache.
+      # packages.<system>.nix-regedit to fetch and install the bundle without
+      # building it. The fetchurl hash pins the asset.
       - name: Generate release flake
         env:
-          TAG: ${{ inputs.tag || github.ref_name }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           sha=$(sha256sum dist/nix-regedit.bin | cut -d' ' -f1)
           base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
           mkdir -p dist/flake
+          cp "$GITHUB_WORKSPACE/nix-regedit.desktop" dist/flake/
           cat > dist/flake/flake.nix <<EOF
           {
             inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -69,7 +97,11 @@ jobs:
                     sha256 = "${sha}";
                   };
                   dontUnpack = true;
-                  installPhase = "install -Dm755 \$src \$out/bin/nix-regedit";
+                  dontFixup = true;
+                  installPhase = ''
+                    install -Dm755 \$src \$out/bin/nix-regedit
+                    install -Dm644 \${./nix-regedit.desktop} \$out/share/applications/nix-regedit.desktop
+                  '';
                 };
               in {
                 packages = forAllSystems (pkgs: {
@@ -79,12 +111,13 @@ jobs:
               };
           }
           EOF
-          tar -czf dist/nix-regedit-flake.tar.gz -C dist/flake flake.nix
+          tar -czf dist/nix-regedit-flake.tar.gz -C dist/flake .
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag || github.ref_name }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/nix-regedit.bin
             dist/nix-regedit-flake.tar.gz
