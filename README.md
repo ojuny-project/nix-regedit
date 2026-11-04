@@ -61,6 +61,23 @@ config-level expression may not appear. Edits are limited to files inside the
 flake root and never touch `/nix/store`. There is no built-in undo history and no backup
 copy, as flakes are expected to be inside git repositories; `nixfmt` rewrites the file in place.
 
+## Releases
+
+A `v*` tag, a manual workflow run, or a commit on `main` whose title starts with
+a version such as `v0.1.0` builds `nix-regedit.bin` and `nix-regedit-flake.tar.gz`.
+
+The release flake installs the prebuilt bundle without compiling:
+
+```nix
+inputs.nix-regedit.url =
+  "tarball+https://github.com/ojuny-project/nix-regedit/releases/download/vX.Y.Z/nix-regedit-flake.tar.gz";
+```
+
+Then add `inputs.nix-regedit.packages.${pkgs.system}.nix-regedit` to `environment.systemPackages`.
+
+The generated flake exposes packages only. Use the source flake when you need
+the NixOS module.
+
 ## Documentation
 - [OPTIONS.md](OPTIONS.md) is the generated options reference.
 
