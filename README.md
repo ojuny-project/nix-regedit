@@ -1,26 +1,12 @@
 # nix-regedit
 
-nix-regedit is a GTK4 and libadwaita application that presents the options
-written in a Nix flake as a registry editor. It scans a flake checkout, lists
-the literal configuration assignments in its module files, and writes edited
-values back into the same files. The package targets Linux and wraps `nix`,
-`nixd`, and `nixfmt` into its runtime path.
+nix-regedit is a graphical application that presents any flake using a "Registry Editor" style menu familiar to windows users. It supports selecting your flake, and can edit the flake directly. It presents attrsets as folders with non-attrset values being similar to the key-value pairs in the windows registry.  
 
-## Status
-
-Untested. The version in `Cargo.toml` and `flake.nix` is 0.1.0. No end-to-end
-run is recorded for this page, and the flake builds the package with
-`doCheck = false`.
 
 ## Requirements
 
-- NixOS or another Linux system with flakes enabled.
-- GTK4 and libadwaita at runtime; the package supplies both.
-- Flake checkouts under `$HOME/repos`; the application scans that directory at
-  startup, not an arbitrary path.
-- `nixd` for option types and descriptions, and `nixfmt` for formatting edited
-  files. The packaged binary finds both through its wrapper.
-- A Rust toolchain and `cargo` only when building from the devshell.
+- NixOS or another Linux system with nix w/ nix-command and flakes enabled.
+- Flake checkouts under `$HOME/repos`; the application scans that directory at startup.
 
 ## Install
 
@@ -47,24 +33,18 @@ package to `environment.systemPackages`. Check the result with
 `command -v nix-regedit`, which prints the store path.
 
 To build without the module, run `nix build`; the executable is
-`result/bin/nix-regedit`. `nix run` starts the application from the checkout.
+`result/bin/nix-regedit`. `nix run` starts the application from the checkout, you can also use `nix run github:ojuny-project/nix-regedit` to run the application without permanent install.
 
 ## Usage
 
 Start `nix-regedit`. The flake selector lists every directory under
-`$HOME/repos` that contains a `flake.nix`, up to three levels deep, skipping
-`target`, `result`, `node_modules`, `.git`, and `.direnv`. If
-`$HOME/repos/nixos-configs/dendrite` exists, it is selected first.
+`$HOME/repos` that contains a `flake.nix`, up to three levels deep.
 
 The left pane shows the namespaces found in the selected flake. The right pane
 shows the keys in the selected namespace. Double-click a key to open its editor;
 the dialog lists each source location and offers a widget chosen from the value
 type. Press OK to write the changes, then the file is reformatted with
 `nixfmt` and the flake is rescanned.
-
-Expected results: the status bar reports `N configured option(s) from flake
-files` after a scan and `Saved, rescanning...` after a successful edit. A
-failed scan or save opens an error dialog and changes the status text.
 
 The scanner records `flake.modules.<kind>.<name>` bodies and other
 `flake.<output>.<name>` bindings. It follows `self.<output>.<path>` references in
@@ -78,15 +58,12 @@ literal attribute paths are read; dynamic attributes are skipped. Files named
 tool does not evaluate nixpkgs defaults, so type information depends on `nixd`.
 An option declared inside `lib.mkMerge`, a list of attribute sets, or another
 config-level expression may not appear. Edits are limited to files inside the
-flake root and never touch `/nix/store`. There is no undo history and no backup
-copy; `nixfmt` rewrites the file in place.
+flake root and never touch `/nix/store`. There is no built-in undo history and no backup
+copy, as flakes are expected to be inside git repositories; `nixfmt` rewrites the file in place.
 
 ## Documentation
+- [OPTIONS.md](OPTIONS.md) is the generated options reference.
 
-- [src/extract.rs](src/extract.rs) shows what the scanner records and resolves.
-- [src/edit.rs](src/edit.rs) shows the write, format, and editability rules.
-- [src/nixd.rs](src/nixd.rs) shows the type and description lookup.
-- [modules/nixos.nix](modules/nixos.nix) defines the module option.
 
 ## Contributing
 
