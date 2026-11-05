@@ -1,0 +1,18 @@
+{
+  "repo": "ojuny-project/nix-regedit",
+  "system": "x86_64-linux",
+  "latest": "v0.1.0-hotfix-4",
+  "releases": {
+    "v0.1.0-hotfix-4": {
+      "tag": "v0.1.0-hotfix-4",
+      "version": "0.1.0-hotfix-4",
+      "packages": {
+        "nix-regedit": {
+          "file": "nix-regedit.bin",
+          "url": "https://github.com/ojuny-project/nix-regedit/releases/download/v0.1.0-hotfix-4/nix-regedit.bin",
+          "hash": "sha256-SfufQ0CPzHqdaNS0UBsED0S8u77vZSPjvNfSnCZsgBQ="
+        }
+      }
+    }
+  }
+}
