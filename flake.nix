@@ -137,6 +137,19 @@
           program = "${nix-regedit}/bin/nix-regedit";
         };
 
+        apps.ci = {
+          type = "app";
+          program = "${
+            pkgs.writeShellApplication {
+              name = "ci";
+              runtimeInputs = [ pkgs.nix ];
+              text = ''
+                exec nix flake check "$@"
+              '';
+            }
+          }/bin/ci";
+        };
+
         checks.default = nix-regedit;
 
         devShells.default = pkgs.mkShell {
@@ -165,6 +178,7 @@
       }
     )
     // {
+      hydraJobs = self.checks;
       lib.mkBinary = mkBinary;
       nixosModules.default = import ./modules/nixos.nix self;
       nixosModules.nix-regedit = import ./modules/nixos.nix self;
